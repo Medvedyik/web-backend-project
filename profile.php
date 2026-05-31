@@ -256,6 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <button type="submit">Сохранить изменения</button>
     </form>
     <a href="/project/">Вернуться на сайт</a>
+    <a href="logout.php">Выйти из сессии</a>
 </div>
 </body>
 </html>

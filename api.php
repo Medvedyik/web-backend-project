@@ -8,6 +8,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit;
 require_once 'config.php';
 require_once 'functions.php';
 
+session_start();
+
+// Проверка статуса авторизации (для главной страницы)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'status') {
+    session_start();
+    $response = [
+        'authenticated' => isset($_SESSION['user_id']),
+        'login' => $_SESSION['login'] ?? null,
+    ];
+    echo json_encode($response);
+    exit;
+}
+
 // ------------------------------------------------
 // Обработка обычной отправки формы (фолбек без JS)
 // ------------------------------------------------
@@ -78,6 +91,57 @@ if (strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false) {
 if (!$data) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid request format (JSON or XML expected)']);
+    exit;
+}
+
+// Проверяем, не запрос ли на обновление от авторизованного пользователя
+$isUpdate = ($data['action'] ?? '') === 'update';
+if ($isUpdate) {
+    // Пользователь должен быть авторизован
+    if (empty($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Требуется авторизация']);
+        exit;
+    }
+    // Можно также проверить, что в данных передан user_id, совпадающий с сессией,
+    // но для простоты берём идентификатор из сессии
+    $userId = $_SESSION['user_id'];
+    
+    // Валидация (такая же)
+    $errors = validateFormData(
+        trim($data['name'] ?? $data['fio'] ?? ''),
+        trim($data['phone'] ?? $data['tel'] ?? ''),
+        trim($data['email'] ?? ''),
+        trim($data['birth_date'] ?? ''),
+        $data['gender'] ?? '',
+        $data['languages'] ?? [],
+        trim($data['message'] ?? $data['comment'] ?? $data['biography'] ?? ''),
+        isset($data['contract']) ? (int)$data['contract'] : 0
+    );
+    
+    if (!empty($errors)) {
+        http_response_code(422);
+        echo json_encode(['errors' => $errors]);
+        exit;
+    }
+    
+    try {
+        updateApplication(
+            $userId,
+            trim($data['name'] ?? $data['fio'] ?? ''),
+            trim($data['phone'] ?? $data['tel'] ?? ''),
+            trim($data['email'] ?? ''),
+            trim($data['birth_date'] ?? ''),
+            $data['gender'] ?? '',
+            $data['languages'] ?? [],
+            trim($data['message'] ?? $data['comment'] ?? $data['biography'] ?? ''),
+            isset($data['contract']) ? (int)$data['contract'] : 0
+        );
+        echo json_encode(['success' => true, 'message' => 'Данные обновлены']);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Ошибка БД']);
+    }
     exit;
 }
 
