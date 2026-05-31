@@ -8,8 +8,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit;
 require_once 'config.php';
 require_once 'functions.php';
 
-// Сессию не трогаем – она не влияет на создание заявки
-// session_start(); // можно закомментировать, если не нужна
+// ------------------------------------------------
+// Обработка обычной отправки формы (фолбек без JS)
+// ------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' 
+    && (empty($_SERVER['CONTENT_TYPE']) || strpos($_SERVER['CONTENT_TYPE'], 'application/x-www-form-urlencoded') !== false || strpos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false)) {
+    
+    $data = [
+        'name'      => trim($_POST['name'] ?? ''),
+        'phone'     => trim($_POST['phone'] ?? ''),
+        'email'     => trim($_POST['email'] ?? ''),
+        'birth_date'=> trim($_POST['birth_date'] ?? ''),
+        'gender'    => $_POST['gender'] ?? '',
+        'languages' => $_POST['languages'] ?? [],  // из select multiple
+        'biography' => trim($_POST['biography'] ?? ''),
+        'contract'  => isset($_POST['contract']) ? 1 : 0
+    ];
+
+    $errors = validateFormData($data['name'], $data['phone'], $data['email'], $data['birth_date'], $data['gender'], $data['languages'], $data['biography'], $data['contract']);
+
+    if (!empty($errors)) {
+        // Выводим HTML с ошибками
+        header('Content-Type: text/html; charset=utf-8');
+        http_response_code(422);
+        echo '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Ошибки в форме</title></head><body>';
+        echo '<h1>Пожалуйста, исправьте ошибки</h1><ul>';
+        foreach ($errors as $field => $msg) {
+            echo '<li>' . htmlspecialchars($msg) . '</li>';
+        }
+        echo '</ul><p><a href="javascript:history.back()">Вернуться к форме</a></p>';
+        echo '</body></html>';
+        exit;
+    }
+
+    try {
+        $creds = saveNewApplication($data['name'], $data['phone'], $data['email'], $data['birth_date'], $data['gender'], $data['languages'], $data['biography'], $data['contract']);
+        $profileUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
+                    . $_SERVER['HTTP_HOST']
+                    . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')
+                    . '/profile.php';
+
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Данные сохранены</title></head><body>';
+        echo '<h1>Заявка успешно отправлена</h1>';
+        echo '<p><strong>Логин:</strong> ' . htmlspecialchars($creds['login']) . '</p>';
+        echo '<p><strong>Пароль:</strong> ' . htmlspecialchars($creds['pass']) . '</p>';
+        echo '<p>Сохраните их для редактирования анкеты.</p>';
+        echo '<p><a href="' . htmlspecialchars($profileUrl) . '">Перейти к редактированию анкеты</a></p>';
+        echo '</body></html>';
+        exit;
+    } catch (PDOException $e) {
+        header('Content-Type: text/html; charset=utf-8');
+        http_response_code(500);
+        echo '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Ошибка</title></head><body>';
+        echo '<h1>Ошибка сервера</h1><p>Не удалось сохранить данные. Попробуйте позже.</p>';
+        echo '</body></html>';
+        exit;
+    }
+}
 
 $input = file_get_contents('php://input');
 $data = null;
