@@ -38,6 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         'contract'  => isset($_POST['contract']) ? 1 : 0
     ];
 
+    if (!empty($_SESSION['user_id'])) {
+        header('Content-Type: text/html; charset=utf-8');
+        http_response_code(409);
+        echo '<!DOCTYPE html>...'; // сообщение на HTML
+        echo '<h1>Вы уже отправляли заявку</h1>';
+        echo '<p>Вы авторизованы как ' . htmlspecialchars($_SESSION['login']) . '.</p>';
+        echo '<p><a href="profile.php">Редактировать заявку</a> | <a href="logout.php">Выйти</a></p>';
+        exit;
+    }
+
     $errors = validateFormData($data['name'], $data['phone'], $data['email'], $data['birth_date'], $data['gender'], $data['languages'], $data['biography'], $data['contract']);
 
     if (!empty($errors)) {
@@ -55,6 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     }
 
     try {
+        $_SESSION['user_id'] = $creds['user_id'];
+        $_SESSION['login'] = $creds['login'];
         $creds = saveNewApplication($data['name'], $data['phone'], $data['email'], $data['birth_date'], $data['gender'], $data['languages'], $data['biography'], $data['contract']);
         $profileUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
                     . $_SERVER['HTTP_HOST']
@@ -145,6 +157,13 @@ if ($isUpdate) {
     exit;
 }
 
+// Для создания заявки – запретить, если уже авторизован
+if (empty($isUpdate) && !empty($_SESSION['user_id'])) {
+    http_response_code(409);
+    echo json_encode(['error' => 'Вы уже отправили заявку. Для создания новой выйдите из системы.']);
+    exit;
+}
+
 $name = trim($data['name'] ?? $data['fio'] ?? '');
 $phone = trim($data['phone'] ?? $data['tel'] ?? '');
 $email = trim($data['email'] ?? '');
@@ -170,6 +189,8 @@ if (!empty($errors)) {
 }
 
 try {
+    $_SESSION['user_id'] = $creds['user_id'];
+    $_SESSION['login'] = $creds['login'];
     $creds = saveNewApplication($name, $phone, $email, $birth_date, $gender, $languages, $biography, $contract);
     $profileUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
                 . $_SERVER['HTTP_HOST']

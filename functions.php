@@ -102,7 +102,7 @@ function saveNewApplication($fio, $phone, $email, $birth_date, $gender, $languag
         }
 
         $pdo->commit();
-        return ['login' => $login, 'pass' => $plainPassword];
+        return ['login' => $login, 'pass' => $plainPassword, 'user_id' => $userId];
     } catch (PDOException $e) {
         $pdo->rollBack();
         throw $e;
