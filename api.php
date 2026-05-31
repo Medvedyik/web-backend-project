@@ -65,9 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     }
 
     try {
+        $creds = saveNewApplication($data['name'], $data['phone'], $data['email'], $data['birth_date'], $data['gender'], $data['languages'], $data['biography'], $data['contract']);
         $_SESSION['user_id'] = $creds['user_id'];
         $_SESSION['login'] = $creds['login'];
-        $creds = saveNewApplication($data['name'], $data['phone'], $data['email'], $data['birth_date'], $data['gender'], $data['languages'], $data['biography'], $data['contract']);
         $profileUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
                     . $_SERVER['HTTP_HOST']
                     . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')
@@ -189,9 +189,9 @@ if (!empty($errors)) {
 }
 
 try {
+    $creds = saveNewApplication($name, $phone, $email, $birth_date, $gender, $languages, $biography, $contract);
     $_SESSION['user_id'] = $creds['user_id'];
     $_SESSION['login'] = $creds['login'];
-    $creds = saveNewApplication($name, $phone, $email, $birth_date, $gender, $languages, $biography, $contract);
     $profileUrl = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://')
                 . $_SERVER['HTTP_HOST']
                 . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/')
